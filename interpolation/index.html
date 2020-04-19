@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interpolation</title>
+</head>
+<body>
+  <script src="deps/p5.min.js"></script>
+  <script src="deps/p5.svg.js"></script>
+  <script type="module">
+    import {LitElement, html, css} from 'https://unpkg.com/lit-element/lit-element.js?module';
+    
+    /**
+     * A GUI for this vector art generator.
+     * Place it on the page as an HTML element: <interpolation-gui></interpolation-gui>
+     *
+     * Emits events:
+     * - `equationUpdate` whenever an equation is added/removed/moved.
+     * - `save` whenever the 'download' button is clicked.
+     */
+    class GUI extends LitElement {
+      static get properties() {
+        return { equations: { type: Array } };
+      }
+
+      constructor() {
+        super();
+        this.equations = [];
+      }
+      
+      static get styles() {
+        return css`
+          :host { display: block; }
+          button { padding: 0; }
+        `;
+      }
+
+      moveEquation(i, delta) {
+        const temp = this.equations[i];
+        this.equations[i] = this.equations[i + delta];
+        this.equations[i + delta] = temp;
+        this.requestUpdate();
+      }
+
+      removeEquation(i) {
+        this.equations.splice(i, 1);
+        this.requestUpdate();
+      }
+
+      /** Render an input for the given equation string. */
+      renderCurveEditor(equation, i) {
+        return html`
+          <input type="text" value="${equation}" disabled>
+          <button @click=${() => this.removeEquation(i)}>-</button>
+          <button
+            @click=${() => this.moveEquation(i, -1)}
+            ?disabled=${i === 0}
+          >^</button>
+          <button
+            @click=${() => this.moveEquation(i, 1)}
+            ?disabled=${i === this.equations.length - 1}
+          >v</button>
+          <br>
+        `;
+      }
+
+      addEquation() { 
+        const el = this.renderRoot.getElementById('newEquation');
+        this.equations.push(el.value);
+        el.value = '';
+        this.requestUpdate();
+      }
+
+      renderNewCurveInput() {
+        return html`
+          <input type="text" id="newEquation" placeholder="f(x)">
+          <button @click=${this.addEquation}>+</button>
+        `;
+      }
+
+      save() {
+        let e = new CustomEvent('save', {
+          bubbles: true, 
+          composed: true });
+        this.dispatchEvent(e);
+      }
+    
+      render() {
+        return html`
+          <button @click=${this.save}>download</button>
+          <br>
+          ${this.equations.map((eq, i) => this.renderCurveEditor(eq, i))}
+          ${this.renderNewCurveInput()}
+        `;
+      }
+
+      updated(changedProperties) {
+        let e = new CustomEvent('equationUpdate', { 
+          detail: { equations: this.equations },
+          bubbles: true, 
+          composed: true });
+        this.dispatchEvent(e);
+      }
+    }
+    
+    customElements.define('interpolation-gui', GUI);
+  </script>
+
+  <interpolation-gui style="position: fixed; right: 0; top: 0;"></interpolation-gui>
+
+  <script src="index.js"></script>
+
+  <!-- Markers for the canvas coordinates -->
+  <span style="position: absolute; left: 410px; top: 290px;">1</span>
+  <span style="position: absolute; left: 190px; top: 610px;">-1.5</span>
+</body>
+</html>
