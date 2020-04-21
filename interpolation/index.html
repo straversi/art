@@ -41,9 +41,12 @@
             margin: 2px 10px;
             width: 35px;
           }
-          #lines-area > input[type="text"] {
-            width: 100%;
-            box-sizing: border-box;
+          #line-item {
+            display: flex;
+          }
+          #line-item input[type="text"] {
+            min-width: 0 /* input comes with min-width, get rid of
+                          * it so flexbox can shrink the element. */
           }
           #lines-area {
             border: 1px solid #bbb;
@@ -88,17 +91,18 @@
       renderCurveEditor(equation, i) {
         return html`
           ${this.renderLinesBetween(i)}
-          <input type="text" value="${equation}" @change="${(e) => this.onEquationChanged(e, i)}">
-          <button @click=${() => this.removeEquation(i)}>-</button>
-          <button
-            @click=${() => this.moveEquation(i, -1)}
-            ?disabled=${i === 0}
-          >^</button>
-          <button
-            @click=${() => this.moveEquation(i, 1)}
-            ?disabled=${i === this.equations.length - 1}
-          >v</button>
-          <br>
+          <div id="line-item">
+            <input type="text" value="${equation}" @change="${(e) => this.onEquationChanged(e, i)}">
+            <button @click=${() => this.removeEquation(i)}>-</button>
+            <button
+              @click=${() => this.moveEquation(i, -1)}
+              ?disabled=${i === 0}
+            >^</button>
+            <button
+              @click=${() => this.moveEquation(i, 1)}
+              ?disabled=${i === this.equations.length - 1}
+            >v</button>
+          </div>
         `;
       }
 
