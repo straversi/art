@@ -16,23 +16,40 @@
      * Place it on the page as an HTML element: <interpolation-gui></interpolation-gui>
      *
      * Emits events:
-     * - `equationUpdate` whenever an equation is added/removed/moved.
+     * - `update` whenever an equation is added/removed/moved.
      * - `save` whenever the 'download' button is clicked.
      */
     class GUI extends LitElement {
       static get properties() {
-        return { equations: { type: Array } };
+        return {
+          equations: { type: Array },
+          linesBetween: { type: Array }
+        };
       }
 
       constructor() {
         super();
         this.equations = [];
+        this.linesBetween = [60];
       }
       
       static get styles() {
         return css`
           :host { display: block; }
           button { padding: 0; }
+          input[type="number"] {
+            margin: 2px 10px;
+            width: 35px;
+          }
+          #lines-area > input[type="text"] {
+            width: 100%;
+            box-sizing: border-box;
+          }
+          #lines-area {
+            border: 1px solid #bbb;
+            padding: 5px;
+            margin: 4px 0;
+          }
         `;
       }
 
@@ -45,13 +62,33 @@
 
       removeEquation(i) {
         this.equations.splice(i, 1);
+        this.linesBetween.splice(i, 1);
         this.requestUpdate();
+      }
+
+      onLinesBetweenChanged(e, i) {
+        this.linesBetween[i] = Number(e.target.value);
+        this.requestUpdate();
+      }
+
+      onEquationChanged(e, i) {
+        this.equations[i] = e.target.value;
+        this.requestUpdate();
+      }
+
+      renderLinesBetween(i) {
+        return html`<input
+          type="number"
+          value="${this.linesBetween[i]}"
+          @change=${(e) => this.onLinesBetweenChanged(e, i)}
+        >lines<br>`;
       }
 
       /** Render an input for the given equation string. */
       renderCurveEditor(equation, i) {
         return html`
-          <input type="text" value="${equation}" disabled>
+          ${this.renderLinesBetween(i)}
+          <input type="text" value="${equation}" @change="${(e) => this.onEquationChanged(e, i)}">
           <button @click=${() => this.removeEquation(i)}>-</button>
           <button
             @click=${() => this.moveEquation(i, -1)}
@@ -68,14 +105,16 @@
       addEquation() { 
         const el = this.renderRoot.getElementById('newEquation');
         this.equations.push(el.value);
+        this.linesBetween.push(60);
         el.value = '';
         this.requestUpdate();
       }
 
       renderNewCurveInput() {
         return html`
-          <input type="text" id="newEquation" placeholder="f(x)">
           <button @click=${this.addEquation}>+</button>
+          <input type="text" id="newEquation" placeholder="add new f(x)">
+          <br>
         `;
       }
 
@@ -88,16 +127,23 @@
     
       render() {
         return html`
-          <button @click=${this.save}>download</button>
-          <br>
-          ${this.equations.map((eq, i) => this.renderCurveEditor(eq, i))}
+          <button @click=${this.save}>download</button><br>
+          <div id="lines-area">
+            <input type="text" value="y = 1.5" disabled><br>
+            ${this.equations.map((eq, i) => this.renderCurveEditor(eq, i))}
+            ${this.renderLinesBetween(this.linesBetween.length - 1)}
+            <input type="text" value="y = -1.5" disabled><br>
+          </div>
           ${this.renderNewCurveInput()}
         `;
       }
 
       updated(changedProperties) {
-        let e = new CustomEvent('equationUpdate', { 
-          detail: { equations: this.equations },
+        let e = new CustomEvent('update', { 
+          detail: {
+            equations: this.equations,
+            linesBetween: this.linesBetween,
+          },
           bubbles: true, 
           composed: true });
         this.dispatchEvent(e);
@@ -107,7 +153,7 @@
     customElements.define('interpolation-gui', GUI);
   </script>
 
-  <interpolation-gui style="position: fixed; right: 0; top: 0;"></interpolation-gui>
+  <interpolation-gui style="position: fixed; right: 0; top: 0; width: 200px;"></interpolation-gui>
 
   <script src="index.js"></script>
 
