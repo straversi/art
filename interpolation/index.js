@@ -45,10 +45,10 @@ function makeInputLine(equationString) {
   for (let x = -1; x < 1; x += 2 / nPoints) {
     // Offset x, y by width/2, height/2 to center the equation
     // on the canvas size.
-    const y = eval(equationString);
     // TODO: catch errors on eval and print to the UI. Requires
     // knowing when to delete the visible error state, e.g.
     // i.e. which methods cause errors.
+    const y = eval(equationString);
     line.push([
       (x * width/2) + width/2,
       -1 * (y * width/2) + height/2,
@@ -91,17 +91,48 @@ function lerpCurves(curveA, curveB, t) {
 }
 
 /**
+ * The point at which the following lines intersect:
+ * 1. line from a to b
+ * 2. y = y
+ */
+function getPointAtY(a, b, y) {
+  const m = (b[1] - a[1]) / (b[0] - a[0]);
+  const intersectX = ((y - a[1]) / m) + a[0];
+  return [intersectX, y];
+}
+
+/**
  * Draw a curve to the canvas defined by the set of [x, y]
  * points in `points`.
  */
 function drawCurve(points) {
-  beginShape();
-  curveVertex(...points[0]);
-  for (const point of points) {
-    curveVertex(...point);
+  for (let i = 0; i < points.length - 1; i++) {
+    // When drawing a line between point A and point B,
+    // if (point A in boundary XOR point B in boundary),
+    // we need to clip that line at the boundary. This
+    // prevent CNC drawers that ignore SVG viewbox from
+    // drawing lines outside of the canvas boundaries.
+    const topY = 0;
+    const bottomY = height;
+    const pointAUnderTop = points[i][1] >= topY;
+    const pointBUnderTop = points[i+1][1] >= topY;
+    const pointAAboveBottom = points[i][1] <= bottomY;
+    const pointBAboveBottom = points[i+1][1] <= bottomY;
+    const pointAtTopLine = getPointAtY(points[i], points[i+1], topY);
+    const pointAtBottomLine = getPointAtY(points[i], points[i+1], bottomY);
+    if (pointAUnderTop && !pointBUnderTop) {
+      line(...points[i], ...pointAtTopLine);
+    } else if (!pointAUnderTop && pointBUnderTop) {
+      line(...pointAtTopLine, ...points[i+1]);
+    } else if (!pointAAboveBottom && pointBAboveBottom) {
+      line(...pointAtBottomLine, ...points[i+1]);
+    } else if (pointAAboveBottom && !pointBAboveBottom) {
+      line(...points[i], ...pointAtBottomLine);
+    } else if (pointAAboveBottom && pointAUnderTop && pointBAboveBottom && pointBUnderTop) {
+      // Both points are in the boundary. Draw line safely.
+      line(...points[i], ...points[i+1]);
+    }
   }
-  curveVertex(...points[points.length - 1]);
-  endShape();
 }
 
 /**
@@ -123,7 +154,11 @@ function draw() {
     const fromCurve = curvesToDraw[i];
     const toCurve = curvesToDraw[i+1];
     const linesBetweenCurves = linesBetween[i];
-    for (let t = 0; t < 1; t += 1 / linesBetweenCurves) {
+    for (let t = 0; t <= 1; t += 1 / linesBetweenCurves) {
+      if (t == 0) { t = 0.001; } // nudge away from 0 so the top line
+                                 // isn't always y = 0, even when a
+                                 // control line passes through the top,
+                                 // e.g. `2*x`.
       drawCurve(lerpCurves(fromCurve, toCurve, t));
     }
   }
