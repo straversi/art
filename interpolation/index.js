@@ -106,31 +106,61 @@ function getPointAtY(a, b, y) {
  * points in `points`.
  */
 function drawCurve(points) {
-  for (let i = 0; i < points.length - 1; i++) {
+  for (let i = 0; i < points.length; i++) {
     // When drawing a line between point A and point B,
     // if (point A in boundary XOR point B in boundary),
     // we need to clip that line at the boundary. This
     // prevent CNC drawers that ignore SVG viewbox from
     // drawing lines outside of the canvas boundaries.
+
     const topY = 0;
     const bottomY = height;
     const pointAUnderTop = points[i][1] >= topY;
-    const pointBUnderTop = points[i+1][1] >= topY;
     const pointAAboveBottom = points[i][1] <= bottomY;
+
+    if (i === 0 && pointAUnderTop && pointAAboveBottom) {
+      beginShape();
+      curveVertex(...points[0]);
+    }
+    if ((i === points.length - 1)) {
+      if (pointAUnderTop && pointAAboveBottom) {
+        curveVertex(...points[i]);
+        curveVertex(...points[i]);
+        endShape();
+      }
+      continue; // Ends the loop since this is the last index.
+    }
+
+    const pointBUnderTop = points[i+1][1] >= topY;
     const pointBAboveBottom = points[i+1][1] <= bottomY;
     const pointAtTopLine = getPointAtY(points[i], points[i+1], topY);
     const pointAtBottomLine = getPointAtY(points[i], points[i+1], bottomY);
-    if (pointAUnderTop && !pointBUnderTop) {
-      line(...points[i], ...pointAtTopLine);
-    } else if (!pointAUnderTop && pointBUnderTop) {
-      line(...pointAtTopLine, ...points[i+1]);
-    } else if (!pointAAboveBottom && pointBAboveBottom) {
-      line(...pointAtBottomLine, ...points[i+1]);
-    } else if (pointAAboveBottom && !pointBAboveBottom) {
-      line(...points[i], ...pointAtBottomLine);
+    // Always draw the current point if in bounds.
+    // If current point is IN bounds and next point is OUT of bounds,
+    // draw current point, interpolated point at boundary, then end the shape.
+    // If current point is OUT of bounds and next point is IN bounds,
+    // begin the shape, and draw interpolated point at boundary.
+    if (pointAUnderTop && !pointBUnderTop) { // /
+      curveVertex(...points[i]);
+      curveVertex(...pointAtTopLine);
+      curveVertex(...pointAtTopLine);
+      endShape();
+    } else if (!pointAUnderTop && pointBUnderTop) { // \
+      beginShape();
+      curveVertex(...pointAtTopLine);
+      curveVertex(...pointAtTopLine);
+    } else if (!pointAAboveBottom && pointBAboveBottom) { // /
+      beginShape();
+      curveVertex(...pointAtBottomLine);
+      curveVertex(...pointAtBottomLine);
+    } else if (pointAAboveBottom && !pointBAboveBottom) { // \
+      curveVertex(...points[i]);
+      curveVertex(...pointAtBottomLine);
+      curveVertex(...pointAtBottomLine);
+      endShape();
     } else if (pointAAboveBottom && pointAUnderTop && pointBAboveBottom && pointBUnderTop) {
-      // Both points are in the boundary. Draw line safely.
-      line(...points[i], ...points[i+1]);
+      // Both points are in the boundary. Draw point safely.
+      curveVertex(...points[i]);
     }
   }
 }
