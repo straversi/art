@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Parametric</title>
+</head>
+<body>
+  <script src="deps/p5.min.js"></script>
+  <script src="deps/p5.svg.js"></script>
+  <script type="module">
+    import {LitElement, html, css} from 'https://unpkg.com/lit-element/lit-element.js?module';
+    
+    /**
+     * A GUI for this vector art generator.
+     * Place it on the page as an HTML element: <parametric-gui></parametric-gui>
+     *
+     * Emits events:
+     * - `update` whenever an equation is changed.
+     * - `save` whenever the 'download' button is clicked.
+     */
+    class GUI extends LitElement {
+      static get properties() {
+        return {
+          x: { type: String },
+          y: { type: String },
+          tMin: { type: String },
+          tMax: { type: String },
+          nPoints: { type: String },
+        };
+      }
+
+      constructor() {
+        super();
+        this.x = "cos(t)";
+        this.y = "sin(t)";
+        this.tMin = "0";
+        this.tMax = "2*PI";
+        this.nPoints = "100";
+      }
+      
+      static get styles() {
+        return css`
+          :host { display: block; }
+          button { padding: 0; }
+          .t {
+            width: 40px;
+          }
+          #lines-area {
+            border: 1px solid #bbb;
+            padding: 5px;
+            margin: 4px 0;
+          }
+        `;
+      }
+
+      onXChanged(e) { this.x = e.target.value; }
+      onYChanged(e) { this.y = e.target.value; }
+      onTMinChanged(e) { this.tMin = e.target.value; }
+      onTMaxChanged(e) { this.tMax = e.target.value; }
+      onNPointsChanged(e) { this.nPoints = e.target.value; }
+
+      save() {
+        let e = new CustomEvent('save', {
+          bubbles: true, 
+          composed: true });
+        this.dispatchEvent(e);
+      }
+    
+      render() {
+        return html`
+          <button @click=${this.save}>download</button><br>
+          <div id="lines-area">
+            x=<input type="text" value="${this.x}" @change="${this.onXChanged}">
+            y=<input type="text" value="${this.y}" @change="${this.onYChanged}">
+          </div>
+          from <input class="t" type="text" value="${this.tMin}" @change="${this.onTMinChanged}">
+            &lt; t &lt;
+            <input class="t" type="text" value="${this.tMax}" @change="${this.onTMaxChanged}">
+          <br>
+          with <input class="t" type="text" value="${this.nPoints}" @change="${this.onNPointsChanged}"> points
+        `;
+      }
+
+      updated(changedProperties) {
+        let e = new CustomEvent('update', { 
+          detail: {
+            x: this.x,
+            y: this.y,
+            tMin: this.tMin,
+            tMax: this.tMax,
+            nPoints: this.nPoints,
+          },
+          bubbles: true, 
+          composed: true });
+        this.dispatchEvent(e);
+      }
+    }
+    
+    customElements.define('parametric-gui', GUI);
+  </script>
+
+  <parametric-gui style="position: fixed; right: 0; top: 0; width: 200px;"></parametric-gui>
+
+  <script src="index.js"></script>
+
+  <!-- Markers for the canvas coordinates -->
+  <span style="position: absolute; left: 410px; top: 290px;">1</span>
+  <span style="position: absolute; left: 190px; top: 610px;">-1.5</span>
+</body>
+</html>
