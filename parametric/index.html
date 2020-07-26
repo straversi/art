@@ -17,32 +17,32 @@
      *
      * Emits events:
      * - `update` whenever an equation is changed.
-     * - `save` whenever the 'download' button is clicked.
+     * - `save-svg` whenever the 'download' button is clicked.
      */
     class GUI extends LitElement {
       static get properties() {
         return {
-          x: { type: String },
-          y: { type: String },
-          tMin: { type: String },
-          tMax: { type: String },
-          nPoints: { type: String },
+          name: { type: String },
+          parametrics: { type: Array },
         };
       }
 
       constructor() {
         super();
-        this.x = "cos(t)";
-        this.y = "sin(t)";
-        this.tMin = "0";
-        this.tMax = "2*PI";
-        this.nPoints = "100";
+        this.parametrics = [this.getDefaultParams()];
+        this.name = 'name';
       }
       
       static get styles() {
         return css`
           :host { display: block; }
           button { padding: 0; }
+          .flex {
+            display: flex;
+          }
+          .flex > input[type="text"] {
+            flex-grow: 1;
+          }
           .t {
             width: 40px;
           }
@@ -53,43 +53,105 @@
           }
         `;
       }
+      
+      getDefaultParams() {
+        return {
+          x: "cos(t)",
+          y: "sin(t)",
+          tMin: "0",
+          tMax: "2*PI",
+          nPoints: "100",
+          color: "#000000",
+        };
+      }
 
-      onXChanged(e) { this.x = e.target.value; }
-      onYChanged(e) { this.y = e.target.value; }
-      onTMinChanged(e) { this.tMin = e.target.value; }
-      onTMaxChanged(e) { this.tMax = e.target.value; }
-      onNPointsChanged(e) { this.nPoints = e.target.value; }
-
-      save() {
-        let e = new CustomEvent('save', {
+      saveSVG() {
+        let e = new CustomEvent('save-svg', {
           bubbles: true, 
           composed: true });
         this.dispatchEvent(e);
       }
+
+      saveState() {
+        const content = JSON.stringify(this.parametrics);
+        const file = new Blob([content], {type: 'application/json'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(file);
+        a.download = `${this.name}.parametric`;
+        a.click();
+      }
+
+      async importFile(e) {
+        const file = e.target.files[0];
+        const text = await file.text();
+        // start
+        // Idk why the fuck I have to do this.
+        // Repro without this section: load the page, make a change to
+        // and equation, then click 'browse...' and load a file. The
+        // equation you changed is not updated in the lines editor,
+        // even though the data is indeed changed, and it correctly
+        // renders the loaded equations.
+        this.parametrics = [];
+        this.requestUpdate();
+        await this.updateComplete;
+        // end
+        this.parametrics = JSON.parse(text);
+        this.requestUpdate();
+      }
+
+      addCurve() {
+        this.parametrics.push(this.getDefaultParams());
+        this.requestUpdate();
+      }
+
+      removeCurve(index) {
+        this.parametrics.splice(index, 1);
+        this.requestUpdate();
+      }
+
+      renderLineParams(params, index) {
+        const onChange = (e) => {
+          params[e.target.name] = e.target.value;
+          this.requestUpdate();
+        };
+        return html`
+          <div id="lines-area">
+            <div class="flex">
+              <span>x=</span><input type="text" name="x" value="${params.x}" @change="${onChange}">
+            </div>
+            <div class="flex">
+              <span>y=</span><input type="text" name="y" value="${params.y}" @change="${onChange}">
+            </div>
+            from <input class="t" name="tMin" type="text" value="${params.tMin}" @change="${onChange}">
+              &lt; t &lt;
+              <input class="t" name="tMax" type="text" value="${params.tMax}" @change="${onChange}">
+            <br>
+            with <input class="t" name="nPoints" type="text" value="${params.nPoints}" @change="${onChange}"> points
+            <input name="color" type="color" value="${params.color}" @change="${onChange}">
+            <br>
+            <button @click=${() => this.removeCurve(index)}>❌ delete curve</button>
+          </div>
+        `;
+      }
     
       render() {
         return html`
-          <button @click=${this.save}>download</button><br>
-          <div id="lines-area">
-            x=<input type="text" value="${this.x}" @change="${this.onXChanged}">
-            y=<input type="text" value="${this.y}" @change="${this.onYChanged}">
-          </div>
-          from <input class="t" type="text" value="${this.tMin}" @change="${this.onTMinChanged}">
-            &lt; t &lt;
-            <input class="t" type="text" value="${this.tMax}" @change="${this.onTMaxChanged}">
+          <input type="text" value="${this.name}" style="width: 80px;" @change=${(e) => this.name = e.target.value}>
+          <button @click=${this.saveSVG}>download SVG</button>
+          <button @click=${this.saveState}>save state</button>
           <br>
-          with <input class="t" type="text" value="${this.nPoints}" @change="${this.onNPointsChanged}"> points
+          <input type="file" @change=${this.importFile} accept=".parametric">
+          <br>
+          ${this.parametrics.map((p, i) => this.renderLineParams(p, i))}
+          <button @click=${this.addCurve}>add curve</button><br>
         `;
       }
 
       updated(changedProperties) {
         let e = new CustomEvent('update', { 
           detail: {
-            x: this.x,
-            y: this.y,
-            tMin: this.tMin,
-            tMax: this.tMax,
-            nPoints: this.nPoints,
+            name: this.name,
+            parametrics: this.parametrics,
           },
           bubbles: true, 
           composed: true });
@@ -100,7 +162,7 @@
     customElements.define('parametric-gui', GUI);
   </script>
 
-  <parametric-gui style="position: fixed; right: 0; top: 0; width: 200px;"></parametric-gui>
+  <parametric-gui style="position: fixed; right: 0; top: 0; width: 300px;"></parametric-gui>
 
   <script src="index.js"></script>
 

@@ -3,13 +3,15 @@ const height = 600;
 
 // The parametric curves.
 // Default values match those in the GUI.
-const Parametric = {
+let Parametrics = [{
   x: 'cos(t)',
   y: 'sin(t)',
   tMin: '0',
   tMax: '2*PI',
   nPoints: '100',
-}
+  color: '#000000',
+}];
+let Name = 'name';
 
 /**
  * p5 will run this function first.
@@ -23,16 +25,13 @@ function setup() {
   noLoop();
 
   document.addEventListener('update', (e) => {
-    Parametric.x = e.detail.x;
-    Parametric.y = e.detail.y;
-    Parametric.tMin = e.detail.tMin;
-    Parametric.tMax = e.detail.tMax;
-    Parametric.nPoints = e.detail.nPoints;
+    Parametrics = e.detail.parametrics;
+    Name = e.detail.name;
     redraw();
   });
   
-  document.addEventListener('save', () => {
-    save('test.svg');
+  document.addEventListener('save-svg', () => {
+    save(`${Name}.svg`);
   });
 }
 
@@ -63,7 +62,6 @@ function drawCurve(points) {
     const bottomY = height;
     const pointAUnderTop = points[i][1] >= topY;
     const pointAAboveBottom = points[i][1] <= bottomY;
-
     if (i === 0 && pointAUnderTop && pointAAboveBottom) {
       beginShape();
       curveVertex(...points[0]);
@@ -121,22 +119,25 @@ function draw() {
   // adding a new solid rect. This leads to massive file sizes.
   drawingContext.__clearCanvas();
 
-  const line = [];
-  const tMin = eval(Parametric.tMin);
-  const tMax = eval(Parametric.tMax);
-  const nPoints = eval(Parametric.nPoints);
-  for (let t = tMin; t < tMax; t += tMax / nPoints) {
-    // Offset x, y by width/2, height/2 to center the equation
-    // on the canvas size.
-    // TODO: catch errors on eval and print to the UI. Requires
-    // knowing when to delete the visible error state, e.g.
-    // i.e. which methods cause errors.
-    const x = eval(Parametric.x);
-    const y = eval(Parametric.y);
-    line.push([
-      (x * width/2) + width/2,
-      -1 * (y * width/2) + height/2,
-    ]);
+  for (const Parametric of Parametrics) {
+    const line = [];
+    const tMin = eval(Parametric.tMin);
+    const tMax = eval(Parametric.tMax);
+    const nPoints = eval(Parametric.nPoints);
+    for (let t = tMin; t < tMax; t += tMax / nPoints) {
+      // Offset x, y by width/2, height/2 to center the equation
+      // on the canvas size.
+      // TODO: catch errors on eval and print to the UI. Requires
+      // knowing when to delete the visible error state, e.g.
+      // i.e. which methods cause errors.
+      const x = eval(Parametric.x);
+      const y = eval(Parametric.y);
+      line.push([
+        (x * width/2) + width/2,
+        -1 * (y * width/2) + height/2,
+      ]);
+    }
+    stroke(Parametric.color);
+    drawCurve(line);
   }
-  drawCurve(line);
 }
